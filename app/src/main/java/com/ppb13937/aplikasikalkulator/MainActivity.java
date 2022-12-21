@@ -116,23 +116,20 @@ public class MainActivity extends AppCompatActivity {
         loadHistory();
     }
 
-    public boolean isHistoryExist(int num1, int num2, String operator, int result) {
-        SharedPreferences sharedPrefs = getSharedPreferences(SHARED_PREFS, MODE_PRIVATE);
-        String text = sharedPrefs.getString(TEXT, "");
-        if (text == null) return false;
-
+    public boolean isHistoryExist(int num1,int num2,String operator, int result){
+        SharedPreferences sharedPreferences = getSharedPreferences(SHARED_PREFS, MODE_PRIVATE);
+        String jsonHistory = sharedPreferences.getString("pref_data","");
         try {
-            JSONArray jsonArray = new JSONArray(text);
+            JSONObject jsonObj = new JSONObject(jsonHistory);
+            JSONArray jsonArray = jsonObj.getJSONArray("history");
+            if(jsonArray.length() == 0) return false;
             for (int i = 0; i < jsonArray.length(); i++) {
                 JSONObject obj = jsonArray.getJSONObject(i);
-                if (obj.getInt("num1") == num1 && obj.getInt("num2") == num2 && obj.getString("operator").equals(operator) && obj.getInt("result") == result) {
-                    return true;
-                }
+                if(obj.getInt("num1") == num1 && obj.getInt("num2") == num2 && obj.getString("operator").equals(operator) && obj.getInt("result") == result) return true;
             }
         } catch (JSONException e) {
             e.printStackTrace();
         }
-
         return false;
     }
 
