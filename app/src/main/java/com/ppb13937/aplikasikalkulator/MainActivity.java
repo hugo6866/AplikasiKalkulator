@@ -99,13 +99,10 @@ public class MainActivity extends AppCompatActivity {
         resultTextView.setText(String.valueOf(result));
         SharedPreferences sharedPrefs = getSharedPreferences(SHARED_PREFS, MODE_PRIVATE);
         SharedPreferences.Editor editor;
-        if (!sharedPrefs.contains("initialized")) {
-            saveHistory(num1, num2, operator, result);
-        } else {
-            if (!isHistoryExist(num1, num2, operator)) {
+         if (!isHistoryExist(num1, num2, operator)) {
                 saveHistory(num1, num2, operator, result);
-            }
-        }
+         }
+        
     }
 
     private boolean isHistoryExist(int num1, int num2, String operator) {
