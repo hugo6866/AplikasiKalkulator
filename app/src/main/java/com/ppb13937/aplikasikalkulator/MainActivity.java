@@ -13,172 +13,241 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
+import android.widget.Spinner;
+import android.widget.Switch;
 import android.widget.TextView;
 
 import com.google.gson.Gson;
+import com.google.gson.JsonArray;
 
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
+import java.util.Objects;
 
 public class MainActivity extends AppCompatActivity {
-    private EditText editText1;
-    private EditText editText2;
-    private TextView resultTextView;
-    private static RecyclerView historyRecyclerView;
-    private RadioButton addRadioButton;
-    private Button calculateButton;
-    private RadioButton multiplyRadioButton;
-    private RadioButton divideRadioButton;
-    private RadioGroup operatorRadioGroup;
-    public static ArrayList<History> historyList;
+    EditText editText1, editText2;
+    TextView hasil;
+    private static RecyclerView recHistory;
+    RadioButton tambah;
+    Button hitung;
+    RadioButton kali;
+    RadioButton bagi;
+    RadioGroup group;
+    public static ArrayList<History> listHistory;
 
     public static final String SHARED_PREFS = "sharedPrefs";
     public static final String TEXT = "TEXT";
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        initComponents();
+        initComponent();
         loadHistory();
 
-        calculateButton.setOnClickListener(new View.OnClickListener() {
+        hitung.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                calculate();
+                hitung();
             }
         });
+
     }
 
-    private void initComponents() {
+    private void initComponent() {
         editText1 = findViewById(R.id.editText1);
         editText2 = findViewById(R.id.editText2);
-        resultTextView = findViewById(R.id.textViewHasil);
-        addRadioButton = findViewById(R.id.radioTambah);
-        calculateButton = findViewById(R.id.btnHitung);
-        multiplyRadioButton = findViewById(R.id.radioKali);
-        divideRadioButton = findViewById(R.id.radioBagi);
-        operatorRadioGroup = findViewById(R.id.radioGroup);
-        historyRecyclerView = findViewById(R.id.recHistory);
-        this.historyList = new ArrayList<>();
+        hasil = findViewById(R.id.textViewHasil);
+        tambah = findViewById(R.id.radioTambah);
+        kali = findViewById(R.id.radioKali);
+        bagi = findViewById(R.id.radioBagi);
+        hitung = findViewById(R.id.btnHitung);
+        group = findViewById(R.id.radioGroup);
+        recHistory = findViewById(R.id.recHistory);
+        this.listHistory = new ArrayList<>();
     }
 
-    private void calculate() {
+
+
+    private void hitung(){
         int num1 = (!editText1.getText().toString().matches("")) ? Integer.parseInt(editText1.getText().toString()) : 0;
         int num2 = (!editText2.getText().toString().matches("")) ? Integer.parseInt(editText2.getText().toString()) : 0;
 
-        int checkedRadioButtonId = operatorRadioGroup.getCheckedRadioButtonId();
-        View radioButton = operatorRadioGroup.findViewById(checkedRadioButtonId);
+        int radioButtonID = group.getCheckedRadioButtonId();
+        View radioButton = group.findViewById(radioButtonID);
 
-        int position = operatorRadioGroup.indexOfChild(radioButton);
+        int position = group.indexOfChild(radioButton);
         int result = 0;
         String operator = "";
-        switch (position) {
+        switch (position){
             case 0:
-                result = num1 + num2;
+                result = num1+num2;
                 operator = "+";
                 break;
             case 1:
-                result = num1 * num2;
+                result = num1*num2;
                 operator = "*";
                 break;
             case 2:
-                result = num1 / num2;
+                result = num1/num2;
                 operator = "/";
                 break;
             case 3:
-                result = num1 - num2;
+                result = num1-num2;
                 operator = "-";
                 break;
             default:
+
                 break;
         }
-        resultTextView.setText(String.valueOf(result));
+        hasil.setText(String.valueOf(result));
         SharedPreferences sharedPrefs = getSharedPreferences(SHARED_PREFS, MODE_PRIVATE);
-        SharedPreferences.Editor editor;
-         if (!isHistoryExist(num1, num2, operator)) {
-                saveHistory(num1, num2, operator, result);
-         }
-        
-    }
-
-    private boolean isHistoryExist(int num1, int num2, String operator) {
-        for (History history : historyList) {
-            if (Integer.parseInt(history.getNum1()) == num1 && Integer.parseInt(history.getNum2()) == num2 && history.getOperator().equals(operator)) {
-                return true;
+        SharedPreferences.Editor ed;
+        if(!sharedPrefs.contains("initialized")){
+            saveHistory(num1,num2,operator,result);
+        }
+        else{
+            if(!isHistoryExist(num1,num2,operator,result)) {
+                updateHistory(num1, num2, operator, result);
             }
         }
+        loadHistory();
+    }
+
+    public boolean isHistoryExist(int num1, int num2, String operator, int result) {
+        SharedPreferences sharedPrefs = getSharedPreferences(SHARED_PREFS, MODE_PRIVATE);
+        String text = sharedPrefs.getString(TEXT, "");
+        if (text == null) return false;
+
+        try {
+            JSONArray jsonArray = new JSONArray(text);
+            for (int i = 0; i < jsonArray.length(); i++) {
+                JSONObject obj = jsonArray.getJSONObject(i);
+                if (obj.getInt("num1") == num1 && obj.getInt("num2") == num2 && obj.getString("operator").equals(operator) && obj.getInt("result") == result) {
+                    return true;
+                }
+            }
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+
         return false;
     }
 
-    private void saveHistory(int num1, int num2, String operator, int result) {
+
+    public void saveHistory(int num1, int num2, String operator, int result) {
+        SharedPreferences sharedPreferences = getSharedPreferences(SHARED_PREFS, MODE_PRIVATE);
+        SharedPreferences.Editor editor = sharedPreferences.edit();
+        try {
+            JSONObject jo = new JSONObject();
+            jo.put("num1", num1);
+            jo.put("num2", num2);
+            jo.put("operator", operator);
+            jo.put("result", result);
+            JSONArray ja = new JSONArray();
+            listHistory.add(new History(num1, num2, operator, result));
+            ja.put(jo);
+            JSONObject mainObj = new JSONObject();
+            mainObj.put("history", ja);
+            editor.putBoolean("initialized", true);
+            editor.putString("pref_data", mainObj.toString()).commit();
+        } catch (JSONException json) {
+        }
+        editor.apply();
+    }
+
+    public void updateHistory(int num1, int num2, String operator, int result) {
+        SharedPreferences sharedPreferences = getSharedPreferences(SHARED_PREFS, MODE_PRIVATE);
+        SharedPreferences.Editor editor = sharedPreferences.edit();
+
         History history = new History(num1, num2, operator, result);
-        historyList.add(history);
-        SharedPreferences sharedPrefs = getSharedPreferences(SHARED_PREFS, MODE_PRIVATE);
-        SharedPreferences.Editor editor = sharedPrefs.edit();
-        Gson gson = new Gson();
-        String json = gson.toJson(historyList);
-        editor.putString(TEXT, json);
-        editor.apply();
-        editor.putBoolean("initialized", true);
-        editor.apply();
-        reloadData(this);
+        listHistory.add(history);
+
+        try {
+            JSONArray historyArray = new JSONArray();
+            for (History h : listHistory) {
+                JSONObject historyObject = new JSONObject();
+                historyObject.put("num1", h.getNum1());
+                historyObject.put("num2", h.getNum2());
+                historyObject.put("operator", h.getOperator());
+                historyObject.put("result", h.getResult());
+                historyArray.put(historyObject);
+            }
+
+            JSONObject mainObject = new JSONObject();
+            mainObject.put("history", historyArray);
+
+            editor.putBoolean("initialized", true);
+            editor.putString("pref_data", mainObject.toString()).commit();
+            editor.apply();
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void loadHistory() {
+        SharedPreferences sharedPreferences = getSharedPreferences(SHARED_PREFS, MODE_PRIVATE);
+        String jsonHistory = sharedPreferences.getString("pref_data", "");
+        listHistory.clear();
+
+        try {
+            JSONObject jsonObj = new JSONObject(jsonHistory);
+            JSONArray mJsonArrayProperty = jsonObj.getJSONArray("history");
+            if (mJsonArrayProperty.length() == 0) return;
+
+            for (int i = 0; i < mJsonArrayProperty.length(); i++) {
+                JSONObject history = mJsonArrayProperty.getJSONObject(i);
+                listHistory.add(new History(history.getInt("num1"), history.getInt("num2"), history.getString("operator"), history.getInt("result")));
+            }
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+
+        recHistory.setAdapter(new HistoryAdapter(listHistory, this));
+        recHistory.setLayoutManager(new LinearLayoutManager(this));
     }
 
     public static void reloadData(Context context) {
         SharedPreferences sharedPrefs = context.getSharedPreferences(SHARED_PREFS, MODE_PRIVATE);
         SharedPreferences.Editor editor = sharedPrefs.edit();
-
+        String jsonHistory = sharedPrefs.getString("pref_data", "");
         try {
-            JSONArray jsonArray = new JSONArray();
-            for (History history : historyList) {
-                JSONObject obj = new JSONObject();
-                obj.put("num1", history.getNum1());
-                obj.put("num2", history.getNum2());
-                obj.put("operator", history.getOperator());
-                obj.put("result", history.getResult());
-                jsonArray.put(obj);
-            }
-
-            JSONObject mainObj = new JSONObject();
-            mainObj.put("history", jsonArray);
-            editor.putString(TEXT, mainObj.toString());
-            editor.apply();
-        } catch (JSONException e) {
-            e.printStackTrace();
-        }
-
-        historyRecyclerView.setLayoutManager(new LinearLayoutManager(context));
-        HistoryAdapter historyAdapter = new HistoryAdapter(historyList, context);
-        historyRecyclerView.setAdapter(historyAdapter);
-    }
-
-
-    private void loadHistory() {
-        SharedPreferences sharedPrefs = getSharedPreferences(SHARED_PREFS, MODE_PRIVATE);
-        String text = sharedPrefs.getString(TEXT, "");
-        History history;
-        if (text != null) {
+            JSONObject jsonObj = new JSONObject(jsonHistory);
+            JSONArray mJsonArrayProperty = jsonObj.getJSONArray("history");
             try {
-                JSONArray jsonArray = new JSONArray(text);
-                for (int i = 0; i < jsonArray.length(); i++) {
-                    JSONObject obj = jsonArray.getJSONObject(i);
-                    history = new History();
-                    history.setNum1(obj.getInt("num1"));
-                    history.setNum2(obj.getInt("num2"));
-                    history.setOperator(obj.getString("operator"));
-                    history.setResult(obj.getInt("result"));
-                    historyList.add(history);
+                if (listHistory.size() == 0) {
+                    sharedPrefs.edit().clear().commit();
+                    recHistory.setAdapter(new HistoryAdapter(listHistory, context));
+                    recHistory.setLayoutManager(new LinearLayoutManager(recHistory.getContext()));
+                    return;
                 }
+                JSONArray ja = new JSONArray();
+                for (int i = 0; i < listHistory.size(); i++) {
+                    History history = listHistory.get(i);
+                    JSONObject historyObj = new JSONObject();
+                    historyObj.put("num1", history.getNum1());
+                    historyObj.put("num2", history.getNum2());
+                    historyObj.put("operator", history.getOperator());
+                    historyObj.put("result", history.getResult());
+                    ja.put(historyObj);
+                }
+                JSONObject mainObj = new JSONObject();
+                mainObj.put("history", ja);
+                editor.putBoolean("initialized", true);
+                editor.putString("pref_data", mainObj.toString()).commit();
+                editor.apply();
             } catch (JSONException e) {
                 e.printStackTrace();
             }
+        } catch (JSONException e) {
+            e.printStackTrace();
         }
-        historyRecyclerView.setLayoutManager(new LinearLayoutManager(this));
-        HistoryAdapter historyAdapter = new HistoryAdapter(historyList, this);
-        historyRecyclerView.setAdapter(historyAdapter);
+        recHistory.setAdapter(new HistoryAdapter(listHistory, context));
+        recHistory.setLayoutManager(new LinearLayoutManager(recHistory.getContext()));
     }
+
+
+
 }
